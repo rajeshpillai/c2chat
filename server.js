@@ -93,6 +93,7 @@ uwsApp.ws("/*", {
   },
   open: (ws, req) => {
     console.log("A user connected ", ws.groupId);  // req null is Known thing with uweb.  Use upgrade event
+    console.log(`Active sockets count: ${activeSockets.length}`);
     
     const {groupId} = ws;
     
@@ -137,7 +138,12 @@ uwsApp.ws("/*", {
     console.log('WebSocket backpressure: ' + ws.getBufferedAmount());
   },
   close: (ws) => {
-    console.log("A user disconnected");
+    console.log("A user disconnected"); 
+    const index = activeSockets.indexOf(ws);
+    if (index != -1) {
+      activeSockets.splice(index, 1);
+    }
+    console.log(`Active sockets count: ${activeSockets.length}`);
   }
 });
 

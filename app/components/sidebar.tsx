@@ -18,7 +18,7 @@ export default function Sidebar({ users }: SidebarProps) {
       <ul>
         {users.map(user => (
           <li key={user.id}>
-            <Link to={`/chat/${user.id}`}>{user.name || user.email}</Link>
+            <Link to={`/dashboard/${user.id}`}>{user.name || user.email}</Link>
           </li>
         ))}
       </ul>

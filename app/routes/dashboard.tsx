@@ -1,5 +1,5 @@
 import { LoaderFunction } from "@remix-run/node";
-import { Form, json, useLoaderData } from "@remix-run/react";
+import { Form, json, useLoaderData, Outlet } from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
 
 import Sidebar from "~/components/sidebar";
@@ -18,6 +18,11 @@ export let loader: LoaderFunction = async ({ request }) => {
   // Fetch the list of users
   console.log("FOUND: USERID: ", user);
   const users = await prisma.user.findMany({
+    where: {
+      id: {
+        not: user.id,
+      }
+    },
     select: {
       id: true,
       email: true,
@@ -39,6 +44,7 @@ export default function Dashboard() {
       </Form>
 
       <Sidebar users={users} />
+      <Outlet />
       
     </div>
   );

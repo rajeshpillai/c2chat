@@ -44,12 +44,47 @@ uwsApp.ws("/*", {
       return;
     }
 
-    const groupId = generateGroupId(senderId, recipientId);
+    // Fetch or create the group for these two users
+    let group = await prisma.group.findFirst({
+      where: {
+        isGroup: false,
+        users: {
+          every: {
+            userId: {
+              in: [senderId, recipientId],
+            },
+          },
+        },
+      },
+      include: {
+        users: true,
+      },
+    });
+
+    if (!group) {
+      group = await prisma.group.create({
+        data: {
+          name: `Chat between ${senderId} and ${recipientId}`,
+          isGroup: false,
+          users: {
+            create: [
+              { userId: senderId },
+              { userId: recipientId },
+            ],
+          },
+        },
+      });
+    }
+
+    const groupId = group.id;
+
+    //const groupId = generateGroupId(senderId, recipientId);
+
     console.log("URL: ", url);
     console.log("ws:UPGRADE:groupId", groupId);
 
     res.upgrade(
-      { groupId: groupId, senderId, recipientId },
+      { groupId, senderId, recipientId },
       req.getHeader('sec-websocket-key'),
       req.getHeader('sec-websocket-protocol'),
       req.getHeader('sec-websocket-extensions'),
@@ -58,6 +93,9 @@ uwsApp.ws("/*", {
   },
   open: (ws, req) => {
     console.log("A user connected ", ws.groupId);  // req null is Known thing with uweb.  Use upgrade event
+    
+    const {groupId} = ws;
+    
     // Assign a unique id
     activeSockets.push(ws);
 
@@ -67,7 +105,7 @@ uwsApp.ws("/*", {
     // Send welcome message
     ws.send(JSON.stringify({
       message: `Welcome to cchat!  You are subscribed to ${ws.groupId}`, 
-      userId: ws.groupId
+      groupId
     }));
   },
   message: async (ws, message, isBinary) => {
@@ -81,74 +119,12 @@ uwsApp.ws("/*", {
     }
     console.log("ws:MESSAGE: ", msg);
 
-    // Check if the group exists
-    let group = await prisma.group.findFirst({
-      where: {
-        isGroup: false,
-        users: {
-          every: {
-            userId: {
-              in: [msg.senderId, msg.recipientId],
-            },
-          },
-        },
-      },
-    });
-
-    // If the group doesn't exist, create it
-    if (!group) {
-      group = await prisma.group.create({
-        data: {
-          name: `Chat between ${msg.senderId} and ${msg.recipientId}`,
-          isGroup: false,
-        },
-      });
-    }
-
-    // Check if the sender is already in the group
-    const senderInGroup = await prisma.groupUser.findUnique({
-      where: {
-        userId_groupId: {
-          userId: msg.senderId,
-          groupId: group.id,
-        },
-      },
-    });
-
-    if (!senderInGroup) {
-      await prisma.groupUser.create({
-        data: {
-          userId: msg.senderId,
-          groupId: group.id,
-        },
-      });
-    }
-
-    // Check if the recipient is already in the group
-    const recipientInGroup = await prisma.groupUser.findUnique({
-      where: {
-        userId_groupId: {
-          userId: msg.recipientId,
-          groupId: group.id,
-        },
-      },
-    });
-
-    if (!recipientInGroup) {
-      await prisma.groupUser.create({
-        data: {
-          userId: msg.recipientId,
-          groupId: group.id,
-        },
-      });
-    }
-
     // Store the message in DB
     const newMessage = await prisma.message.create({
       data: {
         content: msg.content,
         senderId: msg.senderId,
-        groupId: group.id, // Use the created/found group ID
+        groupId: ws.groupId, // Use the created/found group ID
       }
     });
 

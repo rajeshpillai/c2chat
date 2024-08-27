@@ -43,6 +43,8 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     orderBy: {createdAt: "asc"}
   });
 
+  console.log("CHAT HISTORY: ", chatHistory);
+
   return json({ sender: user, recipient, chatHistory });
 };
 

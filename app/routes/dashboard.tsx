@@ -1,5 +1,5 @@
 import { LoaderFunction } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { Form, useLoaderData } from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
 
 // Protect the route with a loader
@@ -11,5 +11,13 @@ export let loader: LoaderFunction = async ({ request }) => {
 
 export default function Dashboard() {
   let user = useLoaderData();
-  return <h1>Welcome to your dashboard, user {user.id}</h1>;
+  return (
+    <div>
+      <h1>Welcome, {user.email}!</h1>
+      <p>User ID: {user.id}</p>
+      <Form method="post" action="/logout">
+        <button type="submit">Logout</button>
+      </Form>
+    </div>
+  );
 }

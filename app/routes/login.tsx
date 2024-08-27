@@ -26,10 +26,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // If the user is already authenticated redirect to /dashboard directly
   const session = await sessionStorage.getSession(request.headers.get("Cookie"));
   const error = session.get(authenticator.sessionErrorKey);
-  return await authenticator.isAuthenticated(request, {
-    successRedirect: "/dashboard",
-  });
   
+  const userId = await authenticator.isAuthenticated(request);
+  if (userId) {
+    return rediect("/dashboard");
+  }
+
   return json(
     { error},
     {

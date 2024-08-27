@@ -13,7 +13,7 @@ interface SidebarProps {
 
 export default function Sidebar({ users }: SidebarProps) {
   return (
-    <div style={{ width: "250px", borderRight: "1px solid #ccc", padding: "10px" }}>
+    <div>
       <h2>Users</h2>
       <ul>
         {users.map(user => (

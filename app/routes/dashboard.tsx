@@ -36,16 +36,35 @@ export let loader: LoaderFunction = async ({ request }) => {
 export default function Dashboard() {
   let  {user, users} = useLoaderData();
   return (
-    <div>
-      <h1>Welcome, {user.email}!</h1>
-      <p>User ID: {user.id}</p>
-      <Form method="post" action="/logout">
-        <button type="submit">Logout</button>
-      </Form>
+    <div className="flex h-screen">
+      {/* Sidebar */}
+      <div className="w-1/4 bg-gray-800 text-white p-4">
+        <Sidebar users={users} />
+      </div>
 
-      <Sidebar users={users} />
-      <Outlet />
-      
+      {/* Main Content Area */}
+      <div className="flex-1 p-4 relative">
+        {/* Logout Button */}
+        <Form method="post" action="/logout" className="absolute top-4 right-4">
+          <button
+            type="submit"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Logout
+          </button>
+        </Form>
+
+        {/* Welcome Message */}
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold">Welcome, {user.email}!</h1>
+          <p className="text-sm text-gray-500">User ID: {user.id}</p>
+        </div>
+
+        {/* Outlet for rendering the chat content */}
+        <div className="bg-white shadow-md rounded-lg p-4 h-full">
+          <Outlet />
+        </div>
+      </div>
     </div>
   );
 }

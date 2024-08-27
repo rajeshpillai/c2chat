@@ -20,7 +20,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     return redirect("/login");
   }
 
-  const recipientId = user.id;
+  const recipientId = params.userId;
 
   const recipient = await prisma.user.findUnique({
     where: { id: recipientId },

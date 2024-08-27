@@ -66,7 +66,7 @@ uwsApp.ws("/*", {
 
     // Send welcome message
     ws.send(JSON.stringify({
-      message: "Welcome to cchat!", 
+      message: `Welcome to cchat!  You are subscribed to ${ws.groupId}`, 
       userId: ws.groupId
     }));
   },

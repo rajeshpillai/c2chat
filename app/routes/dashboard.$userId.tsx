@@ -35,12 +35,22 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     throw new Response("User not found", { status: 404 });
   }
 
-  return json({ sender: user, recipient });
+  const groupId = generateGroupId(user.id, recipient.id);
+
+  // Fetch chat history
+  const chatHistory = await prisma.message.findMany({
+    where: { groupId: groupId},
+    orderBy: {createdAt: "asc"}
+  });
+
+  return json({ sender: user, recipient, chatHistory });
 };
 
 export default function ChatWithUser() {
-  const { sender, recipient } = useLoaderData();
-  const [messages, setMessages] = useState([]);
+  const { sender, recipient, chatHistory } = useLoaderData();
+  // const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState({ [generateGroupId(sender.id, recipient.id)]: chatHistory });
+  
   const [newMessage, setNewMessage] = useState("");
   const groupId = generateGroupId(sender.id, recipient.id);
   var socket;

@@ -34,8 +34,11 @@ model Group {
   isGroup   Boolean    @default(false) // true for group chat, false for one-on-one chat
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  lastMessageAt DateTime?    // Field to track the last message sent in the group
   users     GroupUser[]
   messages  Message[]
+
+  @@index([isGroup], name: "isGroup_idx")
 }
 
 
@@ -50,6 +53,7 @@ model GroupUser {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@unique([userId, groupId]) // A user can be in a group only once
+  @@index([userId], name: "userId_idx") // Index on userId for faster lookups
 }
 
 model Message {
@@ -61,5 +65,6 @@ model Message {
 
   sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@index([groupId], name: "groupId_idx") // Index on groupId for faster lookups
 }
 

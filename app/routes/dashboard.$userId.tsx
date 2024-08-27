@@ -42,13 +42,14 @@ export default function ChatWithUser() {
   const { sender, recipient } = useLoaderData();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const groupId = generateGroupId(sender.id, recipient.id);
   var socket;
 
   useEffect(() => {
     // Ensure WebSocket is only used client-side
     if (typeof window !== "undefined") {
       console.log("Sender<->Recipient: ", sender,recipient);
-      const groupId = generateGroupId(sender.id, recipient.id);
+      // const groupId = generateGroupId(sender.id, recipient.id);
       console.log("groupId: ", groupId);
       socket = new WebSocket(`ws://localhost:3001/?senderId=${sender.id}&recipientId=${recipient.id}`);
 
@@ -59,8 +60,12 @@ export default function ChatWithUser() {
 
       socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        console.log("Received message: ", message);
-        setMessages((prevMessages) => [...prevMessages, message]);
+        console.log(`Received message: ${message.content} for group ${groupId} `);
+        // setMessages((prevMessages) => [...prevMessages, message]);
+        setMessages((prevMessages) => ({
+          ...prevMessages,
+          [groupId]: [...(prevMessages[groupId] || []), message],
+        }));
       };
 
       socket.onclose = () => {
@@ -93,7 +98,7 @@ export default function ChatWithUser() {
     <div>
       <h2>Chat with {recipient.name || recipient.email}</h2>
       <div style={{ border: "1px solid #ccc", padding: "10px", maxHeight: "300px", overflowY: "scroll" }}>
-        {messages.map((msg, index) => (
+        {(messages[groupId] || []).map((msg, index) => (
           <div key={index}>
             <strong>{msg.senderId === sender.id ? "You" : recipient.email}:</strong> {msg.content}
           </div>

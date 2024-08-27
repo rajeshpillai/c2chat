@@ -57,7 +57,6 @@ export default function Dashboard() {
         {/* Welcome Message */}
         <div className="mb-4">
           <h1 className="text-2xl font-bold">Welcome, {user.email}!</h1>
-          <p className="text-sm text-gray-500">User ID: {user.id}</p>
         </div>
 
         {/* Outlet for rendering the chat content */}

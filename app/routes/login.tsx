@@ -29,7 +29,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   const userId = await authenticator.isAuthenticated(request);
   if (userId) {
-    return rediect("/dashboard");
+    return redirect("/dashboard");
   }
 
   return json(

@@ -1,16 +1,35 @@
 import { LoaderFunction } from "@remix-run/node";
-import { Form, useLoaderData } from "@remix-run/react";
+import { Form, json, useLoaderData } from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
+
+import Sidebar from "~/components/sidebar";
+
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Protect the route with a loader
 export let loader: LoaderFunction = async ({ request }) => {
-  return await authenticator.isAuthenticated(request, {
-    failureRedirect: "/login",
+  const user = await authenticator.isAuthenticated(request);
+  if(!user) {
+    return redirect("/login");
+  }
+
+  // Fetch the list of users
+  console.log("FOUND: USERID: ", user);
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+    },
   });
+
+  return json({user, users });
+  
 };
 
 export default function Dashboard() {
-  let user = useLoaderData();
+  let  {user, users} = useLoaderData();
   return (
     <div>
       <h1>Welcome, {user.email}!</h1>
@@ -18,6 +37,9 @@ export default function Dashboard() {
       <Form method="post" action="/logout">
         <button type="submit">Logout</button>
       </Form>
+
+      <Sidebar users={users} />
+      
     </div>
   );
 }

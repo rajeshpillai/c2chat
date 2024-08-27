@@ -24,5 +24,42 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  groups    GroupUser[]
+  messages  Message[]
+}
+
+model Group {
+  id        String     @id @default(uuid())
+  name      String
+  isGroup   Boolean    @default(false) // true for group chat, false for one-on-one chat
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  users     GroupUser[]
+  messages  Message[]
+}
+
+
+model GroupUser {
+  id        String   @id @default(uuid())
+  userId    String
+  groupId   String
+  role      String   @default("member") // could be "admin", "member", etc.
+  joinedAt  DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId]) // A user can be in a group only once
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  senderId  String
+  groupId   String
+  createdAt DateTime @default(now())
+
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 

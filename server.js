@@ -18,23 +18,62 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+function generateGroupId(user1Id, user2Id) {
+  // A simple way to generate a consistent ID for both users, regardless of order
+  return [user1Id, user2Id].sort().join("-");
+}
+
+
 uwsApp.ws("/*", {
+  upgrade: (res, req, context) => {
+    const url = req.getUrl();
+    
+    const query = req.getQuery();
+    console.log("QUERY: ", query);
+    
+    const params = new URLSearchParams(query);
+    console.log("PARAMS: ", url, params);
+
+    const senderId = params.get('senderId');
+    const recipientId = params.get('recipientId');
+
+    console.log(`Received senderId: ${senderId}, recipientId: ${recipientId}`);
+
+    if (!senderId || !recipientId) {
+      res.end('Invalid connection parameters');
+      return;
+    }
+
+    const groupId = generateGroupId(senderId, recipientId);
+    console.log("URL: ", url);
+    console.log("ws:UPGRADE:groupId", groupId);
+
+    res.upgrade(
+      { groupId: groupId, senderId, recipientId },
+      req.getHeader('sec-websocket-key'),
+      req.getHeader('sec-websocket-protocol'),
+      req.getHeader('sec-websocket-extensions'),
+      context
+    );
+  },
   open: (ws, req) => {
-    console.log("A user connected ", ws.id);
+    console.log("A user connected ", ws.groupId);  // req null is Known thing with uweb.  Use upgrade event
     // Assign a unique id
     activeSockets.push(ws);
+
+    console.log(`Subscribing to group : ${ws.groupId}`);
+    ws.subscribe(ws.groupId);
+
     // Send welcome message
     ws.send(JSON.stringify({
       message: "Welcome to cchat!", 
-      userId: ws.id
+      userId: ws.groupId
     }));
   },
   message: async (ws, message, isBinary) => {
     let msg;
     try {
-      // Convert the message to a string regardless of its type (binary or string)
       const messageString = Buffer.from(message).toString('utf-8');
-      // Parse the string as JSON
       msg = JSON.parse(messageString);
     } catch (error) {
       console.error("Failed to parse WebSocket message as JSON:", error);
@@ -42,7 +81,7 @@ uwsApp.ws("/*", {
     }
     console.log("ws:MESSAGE: ", msg);
 
-    // Check if the group exists or create one
+    // Check if the group exists
     let group = await prisma.group.findFirst({
       where: {
         isGroup: false,
@@ -56,35 +95,71 @@ uwsApp.ws("/*", {
       },
     });
 
+    // If the group doesn't exist, create it
     if (!group) {
       group = await prisma.group.create({
         data: {
           name: `Chat between ${msg.senderId} and ${msg.recipientId}`,
           isGroup: false,
-          users: {
-            create: [
-              { userId: msg.senderId },
-              { userId: msg.recipientId },
-            ],
-          },
         },
       });
     }
 
-    // Store the message in DB 
+    // Check if the sender is already in the group
+    const senderInGroup = await prisma.groupUser.findUnique({
+      where: {
+        userId_groupId: {
+          userId: msg.senderId,
+          groupId: group.id,
+        },
+      },
+    });
+
+    if (!senderInGroup) {
+      await prisma.groupUser.create({
+        data: {
+          userId: msg.senderId,
+          groupId: group.id,
+        },
+      });
+    }
+
+    // Check if the recipient is already in the group
+    const recipientInGroup = await prisma.groupUser.findUnique({
+      where: {
+        userId_groupId: {
+          userId: msg.recipientId,
+          groupId: group.id,
+        },
+      },
+    });
+
+    if (!recipientInGroup) {
+      await prisma.groupUser.create({
+        data: {
+          userId: msg.recipientId,
+          groupId: group.id,
+        },
+      });
+    }
+
     // Store the message in DB
     const newMessage = await prisma.message.create({
       data: {
-        content: msg.content, 
+        content: msg.content,
         senderId: msg.senderId,
         groupId: group.id, // Use the created/found group ID
       }
     });
 
-    // Broadcast the message to other users in the same group/chat 
-    uwsApp.publish(msg.groupId, JSON.stringify(newMessage));
-  },
+    console.log("NEW MESSAGE: ", newMessage);
 
+    // Broadcast the message to other users in the same group/chat
+    uwsApp.publish(ws.groupId, JSON.stringify(newMessage));
+  },
+  drain: (ws) => {
+    console.log('WebSocket backpressure: ' + ws.getBufferedAmount());
+  },
   close: (ws) => {
     console.log("A user disconnected");
   }

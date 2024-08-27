@@ -5,14 +5,22 @@ import { authenticator } from "~/services/auth.server";
 
 const prisma = new PrismaClient();
 
+function generateGroupId(user1Id, user2Id) {
+  // A simple way to generate a consistent ID for both users, regardless of order
+  return [user1Id, user2Id].sort().join("-");
+}
+
+
 export const loader: LoaderFunction = async ({ request, params }) => {
   
   const user = await authenticator.isAuthenticated(request);
+
+  console.log("USER: ", user);
   if(!user) {
     return redirect("/login");
   }
 
-  const recipientId = params.userId;
+  const recipientId = user.id;
 
   const recipient = await prisma.user.findUnique({
     where: { id: recipientId },
@@ -23,6 +31,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   });
 
   if (!recipient) {
+    console.log("Recipient not found: ", recipientId);
     throw new Response("User not found", { status: 404 });
   }
 
@@ -38,8 +47,11 @@ export default function ChatWithUser() {
   useEffect(() => {
     // Ensure WebSocket is only used client-side
     if (typeof window !== "undefined") {
-      console.log("Recipient: ", recipient);
-      socket = new WebSocket(`ws://localhost:3001`);
+      console.log("Sender<->Recipient: ", sender,recipient);
+      const groupId = generateGroupId(sender.id, recipient.id);
+      console.log("groupId: ", groupId);
+      socket = new WebSocket(`ws://localhost:3001/?senderId=${sender.id}&recipientId=${recipient.id}`);
+
       window.socket = socket;
       socket.onopen = () => {
         console.log("WebSocket connected");
@@ -47,6 +59,7 @@ export default function ChatWithUser() {
 
       socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
+        console.log("Received message: ", message);
         setMessages((prevMessages) => [...prevMessages, message]);
       };
 
@@ -79,9 +92,11 @@ export default function ChatWithUser() {
   return (
     <div>
       <h2>Chat with {recipient.name || recipient.email}</h2>
-      <div>
+      <div style={{ border: "1px solid #ccc", padding: "10px", maxHeight: "300px", overflowY: "scroll" }}>
         {messages.map((msg, index) => (
-          <div key={index}>{msg.content}</div>
+          <div key={index}>
+            <strong>{msg.senderId === sender.id ? "You" : recipient.email}:</strong> {msg.content}
+          </div>
         ))}
       </div>
       <input

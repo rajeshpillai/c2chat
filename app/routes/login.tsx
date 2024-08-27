@@ -2,7 +2,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import  { json } from "@remix-run/node";
 
-import { Form, useActionData, useNavigation, useLoaderData } from "@remix-run/react";
+import { Form,Link, useActionData, useNavigation, useLoaderData } from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
 import {sessionStorage} from "~/services/session.server";
 
@@ -26,9 +26,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // If the user is already authenticated redirect to /dashboard directly
   const session = await sessionStorage.getSession(request.headers.get("Cookie"));
   const error = session.get(authenticator.sessionErrorKey);
-  // return await authenticator.isAuthenticated(request, {
-  //   successRedirect: "/dashboard",
-  // });
+  return await authenticator.isAuthenticated(request, {
+    successRedirect: "/dashboard",
+  });
+  
   return json(
     { error},
     {
@@ -45,7 +46,7 @@ export default function Login() {
   const {error} = useLoaderData();
   console.log("response: ", error);
   return (
-    <>
+    <div>
       {error && <h2 style={{color: "red"}}>{error.message}</h2>}
       <Form method="post">
         <input type="email" name="email" required />
@@ -57,7 +58,10 @@ export default function Login() {
         />
         <button type="submit">Sign In</button>
       </Form>
-    </>
+      <div>
+        <p>Don't have an account? <Link to="/register">Register here</Link></p>
+      </div>
+    </div>
   );
 }
 
